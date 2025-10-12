@@ -1,0 +1,69 @@
+<div class="space-y-4 pb-20 flex flex-col">
+  <header class="flex justify-between items-center text-primary font-medium">
+    <h1 class="text-xl">Forecast</h1>
+    <div class="flex items-center gap-5">
+      <div class="flex items-center gap-2">
+        <%= render DS::Menu.new do |menu| %>
+          <% menu.with_item(variant: "link", text: "Real Estate Calculator", href: "#", icon: "home", data: { turbo_frame: :modal }) %>
+          <% menu.with_item(variant: "link", text: "Mortgage Calculator", href: "#", icon: "calculator", data: { turbo_frame: :modal }) %>
+          <% menu.with_item(variant: "link", text: "Investment Analysis", href: "#", icon: "trending-up", data: { turbo_frame: :modal }) %>
+        <% end %>
+      </div>
+    </div>
+  </header>
+
+  <%= render Forecasts::RealEstateChart.new %>
+
+  <div class="bg-container border border-secondary rounded-xl p-6">
+    <div class="text-center space-y-4">
+      <div class="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+        <%= icon("home", class: "w-8 h-8 text-primary") %>
+      </div>
+      
+      <div class="space-y-2">
+        <h2 class="text-lg font-medium text-primary">Real Estate Forecasting Tools</h2>
+        <p class="text-sm text-secondary">
+          Analyze potential real estate purchases with comprehensive financial modeling tools.
+        </p>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+        <div class="p-4 border border-secondary rounded-lg hover:border-primary transition-colors cursor-pointer">
+          <div class="flex items-center gap-3 mb-2">
+            <%= icon("home", class: "w-5 h-5 text-primary") %>
+            <h3 class="font-medium text-primary">Property Analysis</h3>
+          </div>
+          <p class="text-sm text-secondary">
+            Evaluate property value, cash flow, and ROI potential.
+          </p>
+        </div>
+        
+        <div class="p-4 border border-secondary rounded-lg hover:border-primary transition-colors cursor-pointer">
+          <div class="flex items-center gap-3 mb-2">
+            <%= icon("calculator", class: "w-5 h-5 text-primary") %>
+            <h3 class="font-medium text-primary">Mortgage Calculator</h3>
+          </div>
+          <p class="text-sm text-secondary">
+            Compare loan options and payment scenarios.
+          </p>
+        </div>
+        
+        <div class="p-4 border border-secondary rounded-lg hover:border-primary transition-colors cursor-pointer">
+          <div class="flex items-center gap-3 mb-2">
+              <%= icon("trending-up", class: "w-5 h-5 text-primary") %>
+              <h3 class="font-medium text-primary">Investment Comparison</h3>
+            </div>
+          <p class="text-sm text-secondary">
+            Compare multiple properties and investment strategies.
+          </p>
+        </div>
+      </div>
+      
+      <div class="pt-4">
+        <p class="text-xs text-tertiary">
+          Coming soon: Interactive tools for comprehensive real estate financial analysis
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

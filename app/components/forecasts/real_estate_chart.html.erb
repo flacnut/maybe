@@ -1,0 +1,266 @@
+<div class="space-y-6" data-controller="forecasts--real-estate-chart">
+  <!-- Chart Section -->
+  <div class="bg-container border border-secondary rounded-xl p-6">
+    <div class="mb-6">
+      <h2 class="text-lg font-medium text-primary mb-1">Net Equity Forecast</h2>
+      <p class="text-sm text-secondary">15-year projection of realizable equity (93% of asset value - mortgage remaining)</p>
+    </div>
+
+    <div class="h-80" data-forecasts--real-estate-chart-target="chartContainer">
+      <div
+        id="<%= chart_id %>"
+        class="h-full w-full"
+        data-controller="time-series-chart"
+        data-time-series-chart-data-value="<%= series_data.to_json %>"
+        data-time-series-chart-use-labels-value="true"
+        data-time-series-chart-use-tooltip-value="true"
+      ></div>
+    </div>
+  </div>
+
+  <!-- IRR Display -->
+  <div class="bg-container border border-secondary rounded-xl p-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <%= helpers.icon "trending-up", class: "w-4 h-4 text-green-600" %>
+        <h3 class="text-base font-medium text-primary">Internal Rate of Return (IRR)</h3>
+      </div>
+      <div class="text-right">
+        <span class="text-2xl font-bold text-green-600" data-forecasts--real-estate-chart-target="irrValue">
+          Calculating...
+        </span>
+        <p class="text-xs text-secondary">Annualized return rate</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input Sections -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Property Box -->
+    <div class="bg-container border border-secondary rounded-xl p-4">
+      <h3 class="text-base font-medium text-primary mb-4 flex items-center gap-2">
+        <%= helpers.icon "home", class: "w-4 h-4" %>
+        Property
+      </h3>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-secondary mb-1" for="purchase_price">
+            Purchase Price
+          </label>
+          <input
+            type="number"
+            id="purchase_price"
+            value="<%= purchase_price.to_i %>"
+            data-forecasts--real-estate-chart-target="purchasePrice"
+            data-action="input->forecasts--real-estate-chart#onPurchasePriceChange"
+            class="w-full px-3 py-2 text-sm border border-secondary rounded-md focus:ring-1 focus:ring-primary focus:border-primary"
+            placeholder="500000"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-secondary mb-1" for="depreciable_value">
+            Depreciable Value
+          </label>
+          <input
+            type="number"
+            id="depreciable_value"
+            value="<%= depreciable_value.to_i %>"
+            data-forecasts--real-estate-chart-target="depreciableValue"
+            data-action="input->forecasts--real-estate-chart#updateChart"
+            class="w-full px-3 py-2 text-sm border border-secondary rounded-md focus:ring-1 focus:ring-primary focus:border-primary"
+            placeholder="400000"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-secondary mb-1" for="growth_rate">
+            Growth Rate (%)
+          </label>
+          <input
+            type="number"
+            id="growth_rate"
+            value="<%= growth_rate %>"
+            step="0.1"
+            min="0"
+            max="20"
+            data-forecasts--real-estate-chart-target="growthRate"
+            data-action="input->forecasts--real-estate-chart#updateChart"
+            class="w-full px-3 py-2 text-sm border border-secondary rounded-md focus:ring-1 focus:ring-primary focus:border-primary"
+            placeholder="3.0"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Income Box -->
+    <div class="bg-container border border-secondary rounded-xl p-4">
+      <h3 class="text-base font-medium text-primary mb-4 flex items-center gap-2">
+        <%= helpers.icon "dollar-sign", class: "w-4 h-4" %>
+        Income
+      </h3>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-secondary mb-1" for="cap_rate">
+            Cap Rate (%)
+          </label>
+          <input
+            type="number"
+            id="cap_rate"
+            value="<%= cap_rate %>"
+            step="0.1"
+            min="0"
+            max="20"
+            data-forecasts--real-estate-chart-target="capRate"
+            data-action="input->forecasts--real-estate-chart#onCapRateChange"
+            class="w-full px-3 py-2 text-sm border border-secondary rounded-md focus:ring-1 focus:ring-primary focus:border-primary"
+            placeholder="5.0"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-secondary mb-1" for="noi">
+            NOI (Net Operating Income)
+          </label>
+          <input
+            type="number"
+            id="noi"
+            value="<%= noi.to_i %>"
+            data-forecasts--real-estate-chart-target="noi"
+            data-action="input->forecasts--real-estate-chart#onNOIChange"
+            class="w-full px-3 py-2 text-sm border border-secondary rounded-md focus:ring-1 focus:ring-primary focus:border-primary"
+            placeholder="25000"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-secondary mb-1" for="monthly_income">
+            Monthly Income (calculated)
+          </label>
+          <input
+            type="number"
+            id="monthly_income"
+            value="<%= (noi / 12).round(0) %>"
+            data-forecasts--real-estate-chart-target="monthlyIncome"
+            class="w-full px-3 py-2 text-sm border border-secondary rounded-md bg-gray-50 cursor-not-allowed"
+            readonly
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-secondary mb-1" for="rent_bump_rate">
+            Rent Bump Rate (%)
+          </label>
+          <input
+            type="number"
+            id="rent_bump_rate"
+            value="<%= rent_bump_rate %>"
+            step="0.1"
+            min="0"
+            max="10"
+            data-forecasts--real-estate-chart-target="rentBumpRate"
+            data-action="input->forecasts--real-estate-chart#updateChart"
+            class="w-full px-3 py-2 text-sm border border-secondary rounded-md focus:ring-1 focus:ring-primary focus:border-primary"
+            placeholder="2.5"
+          />
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Mortgage Box -->
+    <div class="bg-container border border-secondary rounded-xl p-4">
+      <h3 class="text-base font-medium text-primary mb-4 flex items-center gap-2">
+        <%= helpers.icon "calculator", class: "w-4 h-4" %>
+        Mortgage
+      </h3>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-secondary mb-1" for="deposit_percentage">
+            Deposit Percentage (%)
+          </label>
+          <input
+            type="number"
+            id="deposit_percentage"
+            value="<%= deposit_percentage %>"
+            step="1"
+            min="0"
+            max="100"
+            data-forecasts--real-estate-chart-target="depositPercentage"
+            data-action="input->forecasts--real-estate-chart#onDepositPercentageChange"
+            class="w-full px-3 py-2 text-sm border border-secondary rounded-md focus:ring-1 focus:ring-primary focus:border-primary"
+            placeholder="20.0"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-secondary mb-1" for="interest_rate">
+            Interest Rate (%)
+          </label>
+          <input
+            type="number"
+            id="interest_rate"
+            value="6.5"
+            step="0.1"
+            min="0"
+            max="20"
+            data-forecasts--real-estate-chart-target="interestRate"
+            data-action="input->forecasts--real-estate-chart#updateLoanCalculations input->forecasts--real-estate-chart#updateChart"
+            class="w-full px-3 py-2 text-sm border border-secondary rounded-md focus:ring-1 focus:ring-primary focus:border-primary"
+            placeholder="6.5"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-secondary mb-1" for="loan_amount">
+            Loan Amount
+          </label>
+          <input
+            type="number"
+            id="loan_amount"
+            value="<%= loan_amount.to_i %>"
+            data-forecasts--real-estate-chart-target="loanAmount"
+            data-action="input->forecasts--real-estate-chart#onLoanAmountChange"
+            class="w-full px-3 py-2 text-sm border border-secondary rounded-md focus:ring-1 focus:ring-primary focus:border-primary"
+            placeholder="400000"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-secondary mb-1" for="repayment_amount">
+            Monthly Payment (calculated)
+          </label>
+          <input
+            type="number"
+            id="repayment_amount"
+            value="<%= repayment_amount.to_i %>"
+            data-forecasts--real-estate-chart-target="repaymentAmount"
+            class="w-full px-3 py-2 text-sm border border-secondary rounded-md bg-gray-50 cursor-not-allowed"
+            readonly
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Projection Table -->
+  <div class="bg-container border border-secondary rounded-xl p-6">
+    <div class="mb-4">
+      <h3 class="text-lg font-medium text-primary mb-1">15-Year Financial Projection</h3>
+      <p class="text-sm text-secondary">Detailed yearly breakdown of investment performance</p>
+    </div>
+    
+    <div class="overflow-x-auto">
+      <table class="min-w-full">
+        <thead>
+          <tr class="border-b border-gray-200">
+            <th class="py-3 px-2 text-left font-medium text-secondary">Year</th>
+            <th class="py-3 px-2 text-right font-medium text-secondary">Asset Value</th>
+            <th class="py-3 px-2 text-right font-medium text-secondary">Mortgage Remaining</th>
+            <th class="py-3 px-2 text-right font-medium text-secondary">Net Equity</th>
+            <th class="py-3 px-2 text-right font-medium text-secondary">NOI</th>
+            <th class="py-3 px-2 text-right font-medium text-secondary">Interest Paid</th>
+            <th class="py-3 px-2 text-right font-medium text-secondary">Profit</th>
+            <th class="py-3 px-2 text-right font-medium text-secondary">Cash Flow</th>
+            <th class="py-3 px-2 text-right font-medium text-secondary">After-Tax Cash Flow</th>
+          </tr>
+        </thead>
+        <tbody data-forecasts--real-estate-chart-target="projectionTableBody">
+          <!-- Rows will be populated by JavaScript -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

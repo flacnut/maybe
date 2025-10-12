@@ -107,6 +107,7 @@ export default class extends Controller {
 
     if (this.useLabelsValue) {
       this._drawXAxisLabels();
+      this._drawYAxisLabels();
       this._drawGradientBelowTrendline();
     }
 
@@ -217,6 +218,54 @@ export default class extends Controller {
         return i === 0 ? "5em" : "-5em";
       })
       .attr("dy", "0em");
+  }
+
+  _drawYAxisLabels() {
+    console.log('Drawing Y-axis labels...');
+    // Calculate nice tick values for Y-axis
+    const yDomain = this._d3YScale.domain();
+    const tickValues = this._d3YScale.ticks(5);
+    console.log('Y domain:', yDomain, 'Tick values:', tickValues);
+    
+    // Add Y-axis ticks
+    this._d3Group
+      .append("g")
+      .attr("class", "y-axis")
+      .attr("transform", "translate(0,0)")
+      .call(
+        d3
+          .axisLeft(this._d3YScale)
+          .tickValues(tickValues)
+          .tickSize(-this._d3ContainerWidth) // Grid lines across chart
+          .tickFormat((d) => {
+            if (d >= 1000000) {
+              return `$${(d / 1000000).toFixed(1)}M`;
+            } else if (d >= 1000) {
+              return `$${(d / 1000).toFixed(0)}K`;
+            } else {
+              return `$${d.toLocaleString()}`;
+            }
+          }) // Format as currency with K/M suffix
+      )
+      .select(".domain")
+      .remove();
+
+    // Style Y-axis ticks
+    this._d3Group
+      .selectAll(".tick line")
+      .attr("class", "grid-line")
+      .style("stroke", "var(--color-gray-200)")
+      .style("stroke-dasharray", "2,2")
+      .style("opacity", 0.5);
+
+    this._d3Group
+      .selectAll(".tick text")
+      .attr("class", "fg-gray")
+      .style("font-size", "11px")
+      .style("font-weight", "400")
+      .attr("text-anchor", "end")
+      .attr("dx", "-0.5em")
+      .attr("dy", "0.32em");
   }
 
   _drawGradientBelowTrendline() {
@@ -373,27 +422,24 @@ export default class extends Controller {
   }
 
   _tooltipTemplate(datum) {
+    console.log('Tooltip datum:', datum);
+    
+    // Simple tooltip format for our forecast data
+    const formattedValue = datum.value?.toLocaleString ? 
+      `$${datum.value.toLocaleString()}` : 
+      `$${datum.value}`;
+    
     return `
       <div style="margin-bottom: 4px; color: var(--color-gray-500);">
         ${datum.date_formatted}
       </div>
-      <div class="flex items-center gap-4">
-        <div class="flex items-center gap-2 text-primary">
-          <div class="flex items-center justify-center h-4 w-4">
-            ${this._getTrendIcon(datum)}
-          </div>
-          ${this._extractFormattedValue(datum.trend.current)}
+      <div class="flex items-center gap-2 text-primary">
+        <div class="text-base font-medium">
+          ${formattedValue}
         </div>
-
-        ${
-          datum.trend.value === 0
-            ? `<span class="w-20"></span>`
-            : `
-          <span style="color: ${datum.trend.color};">
-            ${this._extractFormattedValue(datum.trend.value)} (${datum.trend.percent_formatted})
-          </span>
-        `
-        }
+        <div class="text-xs text-secondary">
+          Net Equity
+        </div>
       </div>
     `;
   }
