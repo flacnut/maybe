@@ -18,18 +18,44 @@
     </div>
   </div>
 
-  <!-- IRR Display -->
+  <!-- Financial Metrics Display -->
   <div class="bg-container border border-secondary rounded-xl p-4">
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <%= helpers.icon "trending-up", class: "w-4 h-4 text-green-600" %>
-        <h3 class="text-base font-medium text-primary">Internal Rate of Return (IRR)</h3>
-      </div>
-      <div class="text-right">
-        <span class="text-2xl font-bold text-green-600" data-forecasts--real-estate-chart-target="irrValue">
+    <div class="flex items-center gap-2 mb-4">
+      <%= helpers.icon "trending-up", class: "w-4 h-4 text-green-600" %>
+      <h3 class="text-base font-medium text-primary">Key Financial Metrics</h3>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- IRR -->
+      <div class="text-center">
+        <span class="text-xl font-bold text-green-600" data-forecasts--real-estate-chart-target="irrValue">
           Calculating...
         </span>
-        <p class="text-xs text-secondary">Annualized return rate</p>
+        <p class="text-xs text-secondary">IRR (%)</p>
+      </div>
+      
+      <!-- Monthly Income -->
+      <div class="text-center">
+        <span class="text-xl font-bold text-primary" data-forecasts--real-estate-chart-target="monthlyIncomeDisplay">
+          $<%= (noi / 12).round(0).to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse %>
+        </span>
+        <p class="text-xs text-secondary">Monthly Income</p>
+      </div>
+      
+      <!-- Monthly Payment -->
+      <div class="text-center">
+        <span class="text-xl font-bold text-primary" data-forecasts--real-estate-chart-target="monthlyPaymentDisplay">
+          $<%= repayment_amount.to_i.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse %>
+        </span>
+        <p class="text-xs text-secondary">Monthly Payment</p>
+      </div>
+      
+      <!-- DSCR -->
+      <div class="text-center">
+        <span class="text-xl font-bold text-blue-600" data-forecasts--real-estate-chart-target="dscrValue">
+          <%= repayment_amount > 0 ? ((noi / 12) / repayment_amount).round(2) : "N/A" %>
+        </span>
+        <p class="text-xs text-secondary">DSCR</p>
       </div>
     </div>
   </div>
@@ -43,50 +69,56 @@
         Property
       </h3>
       <div class="space-y-4">
-        <div>
-          <label class="block text-xs font-medium text-secondary mb-1" for="purchase_price">
-            Purchase Price
-          </label>
-          <input
-            type="number"
-            id="purchase_price"
-            value="<%= purchase_price.to_i %>"
-            data-forecasts--real-estate-chart-target="purchasePrice"
-            data-action="input->forecasts--real-estate-chart#onPurchasePriceChange"
-            class="w-full px-3 py-2 text-sm border border-secondary rounded-md focus:ring-1 focus:ring-primary focus:border-primary"
-            placeholder="500000"
-          />
+        <div class="form-field">
+          <div class="form-field__body">
+            <label class="form-field__label" for="purchase_price">
+              Purchase Price
+            </label>
+            <input
+              type="number"
+              id="purchase_price"
+              value="<%= purchase_price.to_i %>"
+              data-forecasts--real-estate-chart-target="purchasePrice"
+              data-action="input->forecasts--real-estate-chart#onPurchasePriceChange"
+              class="form-field__input"
+              placeholder="500000"
+            />
+          </div>
         </div>
-        <div>
-          <label class="block text-xs font-medium text-secondary mb-1" for="depreciable_value">
-            Depreciable Value
-          </label>
-          <input
-            type="number"
-            id="depreciable_value"
-            value="<%= depreciable_value.to_i %>"
-            data-forecasts--real-estate-chart-target="depreciableValue"
-            data-action="input->forecasts--real-estate-chart#updateChart"
-            class="w-full px-3 py-2 text-sm border border-secondary rounded-md focus:ring-1 focus:ring-primary focus:border-primary"
-            placeholder="400000"
-          />
+        <div class="form-field">
+          <div class="form-field__body">
+            <label class="form-field__label" for="depreciable_value">
+              Depreciable Value
+            </label>
+            <input
+              type="number"
+              id="depreciable_value"
+              value="<%= depreciable_value.to_i %>"
+              data-forecasts--real-estate-chart-target="depreciableValue"
+              data-action="input->forecasts--real-estate-chart#updateChart"
+              class="form-field__input"
+              placeholder="400000"
+            />
+          </div>
         </div>
-        <div>
-          <label class="block text-xs font-medium text-secondary mb-1" for="growth_rate">
-            Growth Rate (%)
-          </label>
-          <input
-            type="number"
-            id="growth_rate"
-            value="<%= growth_rate %>"
-            step="0.1"
-            min="0"
-            max="20"
-            data-forecasts--real-estate-chart-target="growthRate"
-            data-action="input->forecasts--real-estate-chart#updateChart"
-            class="w-full px-3 py-2 text-sm border border-secondary rounded-md focus:ring-1 focus:ring-primary focus:border-primary"
-            placeholder="3.0"
-          />
+        <div class="form-field">
+          <div class="form-field__body">
+            <label class="form-field__label" for="growth_rate">
+              Growth Rate (%)
+            </label>
+            <input
+              type="number"
+              id="growth_rate"
+              value="<%= growth_rate %>"
+              step="0.1"
+              min="0"
+              max="20"
+              data-forecasts--real-estate-chart-target="growthRate"
+              data-action="input->forecasts--real-estate-chart#updateChart"
+              class="form-field__input"
+              placeholder="3.0"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -98,66 +130,59 @@
         Income
       </h3>
       <div class="space-y-4">
-        <div>
-          <label class="block text-xs font-medium text-secondary mb-1" for="cap_rate">
-            Cap Rate (%)
-          </label>
-          <input
-            type="number"
-            id="cap_rate"
-            value="<%= cap_rate %>"
-            step="0.1"
-            min="0"
-            max="20"
-            data-forecasts--real-estate-chart-target="capRate"
-            data-action="input->forecasts--real-estate-chart#onCapRateChange"
-            class="w-full px-3 py-2 text-sm border border-secondary rounded-md focus:ring-1 focus:ring-primary focus:border-primary"
-            placeholder="5.0"
-          />
+        <div class="form-field">
+          <div class="form-field__body">
+            <label class="form-field__label" for="cap_rate">
+              Cap Rate (%)
+            </label>
+            <input
+              type="number"
+              id="cap_rate"
+              value="<%= cap_rate %>"
+              step="0.1"
+              min="0"
+              max="20"
+              data-forecasts--real-estate-chart-target="capRate"
+              data-action="input->forecasts--real-estate-chart#onCapRateChange"
+              class="form-field__input"
+              placeholder="5.0"
+            />
+          </div>
         </div>
-        <div>
-          <label class="block text-xs font-medium text-secondary mb-1" for="noi">
-            NOI (Net Operating Income)
-          </label>
-          <input
-            type="number"
-            id="noi"
-            value="<%= noi.to_i %>"
-            data-forecasts--real-estate-chart-target="noi"
-            data-action="input->forecasts--real-estate-chart#onNOIChange"
-            class="w-full px-3 py-2 text-sm border border-secondary rounded-md focus:ring-1 focus:ring-primary focus:border-primary"
-            placeholder="25000"
-          />
+        <div class="form-field">
+          <div class="form-field__body">
+            <label class="form-field__label" for="noi">
+              NOI (Net Operating Income)
+            </label>
+            <input
+              type="number"
+              id="noi"
+              value="<%= noi.to_i %>"
+              data-forecasts--real-estate-chart-target="noi"
+              data-action="input->forecasts--real-estate-chart#onNOIChange"
+              class="form-field__input"
+              placeholder="25000"
+            />
+          </div>
         </div>
-        <div>
-          <label class="block text-xs font-medium text-secondary mb-1" for="monthly_income">
-            Monthly Income (calculated)
-          </label>
-          <input
-            type="number"
-            id="monthly_income"
-            value="<%= (noi / 12).round(0) %>"
-            data-forecasts--real-estate-chart-target="monthlyIncome"
-            class="w-full px-3 py-2 text-sm border border-secondary rounded-md bg-gray-50 cursor-not-allowed"
-            readonly
-          />
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-secondary mb-1" for="rent_bump_rate">
-            Rent Bump Rate (%)
-          </label>
-          <input
-            type="number"
-            id="rent_bump_rate"
-            value="<%= rent_bump_rate %>"
-            step="0.1"
-            min="0"
-            max="10"
-            data-forecasts--real-estate-chart-target="rentBumpRate"
-            data-action="input->forecasts--real-estate-chart#updateChart"
-            class="w-full px-3 py-2 text-sm border border-secondary rounded-md focus:ring-1 focus:ring-primary focus:border-primary"
-            placeholder="2.5"
-          />
+        <div class="form-field">
+          <div class="form-field__body">
+            <label class="form-field__label" for="rent_bump_rate">
+              Rent Bump Rate (%)
+            </label>
+            <input
+              type="number"
+              id="rent_bump_rate"
+              value="<%= rent_bump_rate %>"
+              step="0.1"
+              min="0"
+              max="10"
+              data-forecasts--real-estate-chart-target="rentBumpRate"
+              data-action="input->forecasts--real-estate-chart#updateChart"
+              class="form-field__input"
+              placeholder="2.5"
+            />
+          </div>
         </div>
 
       </div>
@@ -170,66 +195,59 @@
         Mortgage
       </h3>
       <div class="space-y-4">
-        <div>
-          <label class="block text-xs font-medium text-secondary mb-1" for="deposit_percentage">
-            Deposit Percentage (%)
-          </label>
-          <input
-            type="number"
-            id="deposit_percentage"
-            value="<%= deposit_percentage %>"
-            step="1"
-            min="0"
-            max="100"
-            data-forecasts--real-estate-chart-target="depositPercentage"
-            data-action="input->forecasts--real-estate-chart#onDepositPercentageChange"
-            class="w-full px-3 py-2 text-sm border border-secondary rounded-md focus:ring-1 focus:ring-primary focus:border-primary"
-            placeholder="20.0"
-          />
+        <div class="form-field">
+          <div class="form-field__body">
+            <label class="form-field__label" for="deposit_percentage">
+              Deposit Percentage (%)
+            </label>
+            <input
+              type="number"
+              id="deposit_percentage"
+              value="<%= deposit_percentage %>"
+              step="1"
+              min="0"
+              max="100"
+              data-forecasts--real-estate-chart-target="depositPercentage"
+              data-action="input->forecasts--real-estate-chart#onDepositPercentageChange"
+              class="form-field__input"
+              placeholder="20.0"
+            />
+          </div>
         </div>
-        <div>
-          <label class="block text-xs font-medium text-secondary mb-1" for="interest_rate">
-            Interest Rate (%)
-          </label>
-          <input
-            type="number"
-            id="interest_rate"
-            value="6.5"
-            step="0.1"
-            min="0"
-            max="20"
-            data-forecasts--real-estate-chart-target="interestRate"
-            data-action="input->forecasts--real-estate-chart#updateLoanCalculations input->forecasts--real-estate-chart#updateChart"
-            class="w-full px-3 py-2 text-sm border border-secondary rounded-md focus:ring-1 focus:ring-primary focus:border-primary"
-            placeholder="6.5"
-          />
+        <div class="form-field">
+          <div class="form-field__body">
+            <label class="form-field__label" for="interest_rate">
+              Interest Rate (%)
+            </label>
+            <input
+              type="number"
+              id="interest_rate"
+              value="6.5"
+              step="0.1"
+              min="0"
+              max="20"
+              data-forecasts--real-estate-chart-target="interestRate"
+              data-action="input->forecasts--real-estate-chart#updateLoanCalculations input->forecasts--real-estate-chart#updateChart"
+              class="form-field__input"
+              placeholder="6.5"
+            />
+          </div>
         </div>
-        <div>
-          <label class="block text-xs font-medium text-secondary mb-1" for="loan_amount">
-            Loan Amount
-          </label>
-          <input
-            type="number"
-            id="loan_amount"
-            value="<%= loan_amount.to_i %>"
-            data-forecasts--real-estate-chart-target="loanAmount"
-            data-action="input->forecasts--real-estate-chart#onLoanAmountChange"
-            class="w-full px-3 py-2 text-sm border border-secondary rounded-md focus:ring-1 focus:ring-primary focus:border-primary"
-            placeholder="400000"
-          />
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-secondary mb-1" for="repayment_amount">
-            Monthly Payment (calculated)
-          </label>
-          <input
-            type="number"
-            id="repayment_amount"
-            value="<%= repayment_amount.to_i %>"
-            data-forecasts--real-estate-chart-target="repaymentAmount"
-            class="w-full px-3 py-2 text-sm border border-secondary rounded-md bg-gray-50 cursor-not-allowed"
-            readonly
-          />
+        <div class="form-field">
+          <div class="form-field__body">
+            <label class="form-field__label" for="loan_amount">
+              Loan Amount
+            </label>
+            <input
+              type="number"
+              id="loan_amount"
+              value="<%= loan_amount.to_i %>"
+              data-forecasts--real-estate-chart-target="loanAmount"
+              data-action="input->forecasts--real-estate-chart#onLoanAmountChange"
+              class="form-field__input"
+              placeholder="400000"
+            />
+          </div>
         </div>
       </div>
     </div>

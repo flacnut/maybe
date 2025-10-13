@@ -3,14 +3,60 @@ import { Controller } from "@hotwired/stimulus";
 export default class extends Controller {
   static targets = [
     "purchasePrice", "depreciableValue", "growthRate", "capRate", "noi", "rentBumpRate",
-    "depositPercentage", "interestRate", "loanAmount", "repaymentAmount",
-    "chartContainer", "projectionTableBody", "irrValue"
+    "depositPercentage", "interestRate", "loanAmount",
+    "chartContainer", "projectionTableBody", "irrValue", 
+    "monthlyIncomeDisplay", "monthlyPaymentDisplay", "dscrValue"
   ]
 
   connect() {
     this.updateIncomeCalculations();
     this.updateLoanCalculations();
+    this.updateMetricsDisplay();
     this.updateChart();
+  }
+
+  // Update the metrics display box (monthly income, monthly payment, DSCR)
+  updateMetricsDisplay() {
+    // Get current values directly from inputs or calculate them
+    const noi = parseFloat(this.noiTarget.value) || 0;
+    const monthlyIncome = noi / 12;
+    
+    // Calculate monthly payment using the same logic as updateLoanCalculations
+    const loanAmount = parseFloat(this.loanAmountTarget.value) || 0;
+    const interestRate = parseFloat(this.interestRateTarget.value) || 0;
+    let monthlyPayment = 0;
+    
+    if (loanAmount > 0 && interestRate >= 0) {
+      monthlyPayment = this.calculatePMT(interestRate / 100.0, 30 * 12, loanAmount);
+    }
+    
+    // Update monthly income display
+    if (this.hasMonthlyIncomeDisplayTarget) {
+      this.monthlyIncomeDisplayTarget.textContent = `$${Math.round(monthlyIncome).toLocaleString()}`;
+    }
+    
+    // Update monthly payment display
+    if (this.hasMonthlyPaymentDisplayTarget) {
+      this.monthlyPaymentDisplayTarget.textContent = `$${Math.round(monthlyPayment).toLocaleString()}`;
+    }
+    
+    // Calculate and update DSCR (Debt Service Coverage Ratio)
+    if (this.hasDscrValueTarget) {
+      const dscr = monthlyPayment > 0 ? (monthlyIncome / monthlyPayment) : 0;
+      this.dscrValueTarget.textContent = dscr > 0 ? dscr.toFixed(2) : "N/A";
+      
+      // Color code DSCR (green if >= 1.25, yellow if >= 1.0, red if < 1.0)
+      this.dscrValueTarget.className = this.dscrValueTarget.className.replace(/text-(green|yellow|red|blue)-600/g, '');
+      if (dscr >= 1.25) {
+        this.dscrValueTarget.classList.add('text-green-600');
+      } else if (dscr >= 1.0) {
+        this.dscrValueTarget.classList.add('text-yellow-600');
+      } else if (dscr > 0) {
+        this.dscrValueTarget.classList.add('text-red-600');
+      } else {
+        this.dscrValueTarget.classList.add('text-blue-600'); // Default color for N/A
+      }
+    }
   }
 
   // Handle purchase price changes - update loan amount and income, keep deposit percentage and cap rate
@@ -77,8 +123,7 @@ export default class extends Controller {
     const newCapRate = purchasePrice > 0 ? (noi / purchasePrice) * 100 : 0;
     this.capRateTarget.value = Math.max(0, newCapRate.toFixed(2));
     
-    // Update monthly income
-    this.monthlyIncomeTarget.value = Math.round(noi / 12);
+    this.updateMetricsDisplay();
     this.updateChart();
   }
 
@@ -90,7 +135,7 @@ export default class extends Controller {
     // Handle edge case: 0% cap rate
     if (capRate === 0) {
       this.noiTarget.value = 0;
-      this.monthlyIncomeTarget.value = 0;
+      this.updateMetricsDisplay();
       return;
     }
     
@@ -98,23 +143,13 @@ export default class extends Controller {
     const newNOI = purchasePrice * (capRate / 100.0);
     this.noiTarget.value = Math.round(Math.max(0, newNOI));
     
-    // Calculate monthly income: Monthly Income = NOI / 12
-    this.monthlyIncomeTarget.value = Math.round(Math.max(0, newNOI / 12));
+    this.updateMetricsDisplay();
   }
 
   // Update loan calculations (repayment amount)
   updateLoanCalculations() {
-    const loanAmount = parseFloat(this.loanAmountTarget.value) || 0;
-    const interestRate = parseFloat(this.interestRateTarget.value) || 0;
-    
-    // Handle edge cases
-    if (loanAmount <= 0) {
-      this.repaymentAmountTarget.value = 0;
-      return;
-    }
-    
-    const monthlyPayment = this.calculatePMT(interestRate / 100.0, 30 * 12, loanAmount);
-    this.repaymentAmountTarget.value = Math.round(Math.max(0, monthlyPayment));
+    // Just trigger metrics display update since we calculate payment there now
+    this.updateMetricsDisplay();
   }
 
   // Calculate PMT (equivalent to Excel PMT function)
@@ -207,7 +242,14 @@ export default class extends Controller {
   }
 
   updateChart() {
+    // Update metrics display first
+    this.updateMetricsDisplay();
+    
     // Get all input values with defaults
+    const loanAmount = parseFloat(this.loanAmountTarget.value) || 400000;
+    const interestRate = parseFloat(this.interestRateTarget.value) || 6.5;
+    const repaymentAmount = loanAmount > 0 ? this.calculatePMT(interestRate / 100.0, 30 * 12, loanAmount) : 0;
+    
     const inputs = {
       purchasePrice: parseFloat(this.purchasePriceTarget.value) || 500000,
       depreciableValue: parseFloat(this.depreciableValueTarget.value) || 400000,
@@ -216,9 +258,9 @@ export default class extends Controller {
       noi: parseFloat(this.noiTarget.value) || 25000,
       rentBumpRate: parseFloat(this.rentBumpRateTarget.value) || 2.5,
       depositPercentage: parseFloat(this.depositPercentageTarget.value) || 20.0,
-      interestRate: parseFloat(this.interestRateTarget.value) || 6.5,
-      loanAmount: parseFloat(this.loanAmountTarget.value) || 400000,
-      repaymentAmount: parseFloat(this.repaymentAmountTarget.value) || 2000
+      interestRate: interestRate,
+      loanAmount: loanAmount,
+      repaymentAmount: repaymentAmount
     };
 
     // Generate new forecast data
@@ -300,15 +342,19 @@ export default class extends Controller {
       return;
     }
 
+    const loanAmount = parseFloat(this.loanAmountTarget.value) || 400000;
+    const interestRate = parseFloat(this.interestRateTarget.value) || 6.5;
+    const repaymentAmount = loanAmount > 0 ? this.calculatePMT(interestRate / 100.0, 30 * 12, loanAmount) : 0;
+    
     const inputs = {
       purchasePrice: parseFloat(this.purchasePriceTarget.value) || 500000,
       depreciableValue: parseFloat(this.depreciableValueTarget.value) || 400000,
       growthRate: parseFloat(this.growthRateTarget.value) || 3.0,
       noi: parseFloat(this.noiTarget.value) || 25000,
       rentBumpRate: parseFloat(this.rentBumpRateTarget.value) || 2.5,
-      loanAmount: parseFloat(this.loanAmountTarget.value) || 400000,
-      repaymentAmount: parseFloat(this.repaymentAmountTarget.value) || 2000,
-      interestRate: parseFloat(this.interestRateTarget.value) || 6.5
+      loanAmount: loanAmount,
+      repaymentAmount: repaymentAmount,
+      interestRate: interestRate
     };
 
     this.projectionTableBodyTarget.innerHTML = '';
