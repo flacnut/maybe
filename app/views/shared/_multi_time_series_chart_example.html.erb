@@ -1,0 +1,81 @@
+<!-- Example usage of the multi-time series chart controller -->
+
+<div 
+  data-controller="multi-time-series-chart"
+  data-multi-time-series-chart-data-value='{
+    "series": [
+      {
+        "name": "Portfolio A",
+        "color": "#3b82f6",
+        "values": [
+          {"date": "2024-01-01", "date_formatted": "Jan 1, 2024", "value": 10000},
+          {"date": "2024-02-01", "date_formatted": "Feb 1, 2024", "value": 12000},
+          {"date": "2024-03-01", "date_formatted": "Mar 1, 2024", "value": 11500},
+          {"date": "2024-04-01", "date_formatted": "Apr 1, 2024", "value": 13000},
+          {"date": "2024-05-01", "date_formatted": "May 1, 2024", "value": 14500}
+        ]
+      },
+      {
+        "name": "Portfolio B", 
+        "color": "#ef4444",
+        "values": [
+          {"date": "2024-01-01", "date_formatted": "Jan 1, 2024", "value": 8000},
+          {"date": "2024-02-01", "date_formatted": "Feb 1, 2024", "value": 8500},
+          {"date": "2024-03-01", "date_formatted": "Mar 1, 2024", "value": 9200},
+          {"date": "2024-04-01", "date_formatted": "Apr 1, 2024", "value": 9800},
+          {"date": "2024-05-01", "date_formatted": "May 1, 2024", "value": 10200}
+        ]
+      },
+      {
+        "name": "Portfolio C",
+        "color": "#10b981", 
+        "values": [
+          {"date": "2024-01-01", "date_formatted": "Jan 1, 2024", "value": 15000},
+          {"date": "2024-02-01", "date_formatted": "Feb 1, 2024", "value": 14200},
+          {"date": "2024-03-01", "date_formatted": "Mar 1, 2024", "value": 16800},
+          {"date": "2024-04-01", "date_formatted": "Apr 1, 2024", "value": 17500},
+          {"date": "2024-05-01", "date_formatted": "May 1, 2024", "value": 18200}
+        ]
+      }
+    ]
+  }'
+  data-multi-time-series-chart-stroke-width-value="2"
+  data-multi-time-series-chart-use-labels-value="true"
+  data-multi-time-series-chart-use-tooltip-value="true"
+  data-multi-time-series-chart-use-legend-value="true"
+  style="width: 800px; height: 400px;"
+  class="border border-gray-200 rounded-lg"
+>
+</div>
+
+<!-- Alternative example with custom colors -->
+<div 
+  data-controller="multi-time-series-chart"
+  data-multi-time-series-chart-data-value='{
+    "series": [
+      {
+        "name": "Revenue",
+        "values": [
+          {"date": "2024-01-01", "date_formatted": "Q1 2024", "value": 50000},
+          {"date": "2024-04-01", "date_formatted": "Q2 2024", "value": 65000},
+          {"date": "2024-07-01", "date_formatted": "Q3 2024", "value": 72000},
+          {"date": "2024-10-01", "date_formatted": "Q4 2024", "value": 68000}
+        ]
+      },
+      {
+        "name": "Expenses", 
+        "values": [
+          {"date": "2024-01-01", "date_formatted": "Q1 2024", "value": 35000},
+          {"date": "2024-04-01", "date_formatted": "Q2 2024", "value": 38000},
+          {"date": "2024-07-01", "date_formatted": "Q3 2024", "value": 42000},
+          {"date": "2024-10-01", "date_formatted": "Q4 2024", "value": 39000}
+        ]
+      }
+    ]
+  }'
+  data-multi-time-series-chart-colors-value='["#22c55e", "#dc2626"]'
+  data-multi-time-series-chart-stroke-width-value="3"
+  style="width: 600px; height: 300px;"
+  class="border border-gray-200 rounded-lg mt-4"
+>
+</div>

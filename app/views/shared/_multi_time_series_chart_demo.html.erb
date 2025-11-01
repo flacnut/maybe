@@ -1,0 +1,190 @@
+<!-- Example Rails view using the multi-time series chart -->
+<% content_for :title, "Portfolio Comparison" %>
+
+<div class="space-y-6">
+  <div class="bg-white rounded-lg border border-gray-200 p-6">
+    <h2 class="text-xl font-semibold mb-4">Account Balance Comparison</h2>
+    
+    <%
+      # Example: Compare multiple account balances over time
+      account_series_data = [
+        {
+          name: "Checking Account",
+          color: "#3b82f6", # Blue
+          data: [
+            { date: 3.months.ago, value: 5000 },
+            { date: 2.months.ago, value: 4800 },
+            { date: 1.month.ago, value: 5200 },
+            { date: Date.current, value: 5500 }
+          ]
+        },
+        {
+          name: "Savings Account", 
+          color: "#10b981", # Green
+          data: [
+            { date: 3.months.ago, value: 25000 },
+            { date: 2.months.ago, value: 26200 },
+            { date: 1.month.ago, value: 27100 },
+            { date: Date.current, value: 28500 }
+          ]
+        },
+        {
+          name: "Investment Account",
+          color: "#8b5cf6", # Purple
+          data: [
+            { date: 3.months.ago, value: 45000 },
+            { date: 2.months.ago, value: 47200 },
+            { date: 1.month.ago, value: 44800 },
+            { date: Date.current, value: 48200 }
+          ]
+        }
+      ]
+      
+      chart_data = multi_time_series_chart_data(account_series_data)
+    %>
+    
+    <div 
+      data-controller="multi-time-series-chart"
+      data-multi-time-series-chart-data-value="<%= chart_data.to_json %>"
+      data-multi-time-series-chart-stroke-width-value="2"
+      data-multi-time-series-chart-use-labels-value="true"
+      data-multi-time-series-chart-use-tooltip-value="true"
+      data-multi-time-series-chart-use-legend-value="true"
+      style="height: 400px;"
+      class="w-full"
+    >
+    </div>
+  </div>
+
+  <div class="bg-white rounded-lg border border-gray-200 p-6">
+    <h2 class="text-xl font-semibold mb-4">Revenue vs Expenses</h2>
+    
+    <%
+      # Example: Revenue vs Expenses comparison
+      revenue_expense_data = [
+        {
+          name: "Monthly Revenue",
+          color: "#22c55e", # Green
+          data: 12.times.map do |i|
+            date = i.months.ago.beginning_of_month
+            {
+              date: date,
+              value: 50000 + (rand * 20000) - 10000 # Random revenue between 40k-60k
+            }
+          end.reverse
+        },
+        {
+          name: "Monthly Expenses",
+          color: "#dc2626", # Red
+          data: 12.times.map do |i|
+            date = i.months.ago.beginning_of_month
+            {
+              date: date, 
+              value: 30000 + (rand * 15000) - 7500 # Random expenses between 22.5k-37.5k
+            }
+          end.reverse
+        }
+      ]
+      
+      revenue_chart_data = multi_time_series_chart_data(revenue_expense_data)
+    %>
+    
+    <div 
+      data-controller="multi-time-series-chart"
+      data-multi-time-series-chart-data-value="<%= revenue_chart_data.to_json %>"
+      data-multi-time-series-chart-stroke-width-value="3"
+      data-multi-time-series-chart-use-labels-value="true"
+      data-multi-time-series-chart-use-tooltip-value="true"
+      data-multi-time-series-chart-use-legend-value="true"
+      style="height: 300px;"
+      class="w-full"
+    >
+    </div>
+  </div>
+
+  <!-- Example with sample portfolio data -->
+  <div class="bg-white rounded-lg border border-gray-200 p-6">
+    <h2 class="text-xl font-semibold mb-4">Account Portfolio Performance</h2>
+    
+    <%
+      # Sample portfolio data using the helper method
+      sample_portfolio_series = [
+        {
+          name: "Checking Account",
+          color: "#3b82f6",
+          data: [
+            { date: 6.months.ago, value: 5000 },
+            { date: 5.months.ago, value: 5200 },
+            { date: 4.months.ago, value: 4800 },
+            { date: 3.months.ago, value: 5500 },
+            { date: 2.months.ago, value: 5800 },
+            { date: 1.month.ago, value: 6200 },
+            { date: Date.current, value: 6500 }
+          ]
+        },
+        {
+          name: "Savings Account", 
+          color: "#10b981",
+          data: [
+            { date: 6.months.ago, value: 15000 },
+            { date: 5.months.ago, value: 15800 },
+            { date: 4.months.ago, value: 16200 },
+            { date: 3.months.ago, value: 16800 },
+            { date: 2.months.ago, value: 17500 },
+            { date: 1.month.ago, value: 18200 },
+            { date: Date.current, value: 19000 }
+          ]
+        },
+        {
+          name: "Investment Account",
+          color: "#8b5cf6", 
+          data: [
+            { date: 6.months.ago, value: 25000 },
+            { date: 5.months.ago, value: 26500 },
+            { date: 4.months.ago, value: 24800 },
+            { date: 3.months.ago, value: 28200 },
+            { date: 2.months.ago, value: 29800 },
+            { date: 1.month.ago, value: 31200 },
+            { date: Date.current, value: 32500 }
+          ]
+        }
+      ]
+      
+      portfolio_chart_data = multi_time_series_chart_data(sample_portfolio_series)
+    %>
+    
+    <div 
+      data-controller="multi-time-series-chart"
+      data-multi-time-series-chart-data-value="<%= portfolio_chart_data.to_json %>"
+      data-multi-time-series-chart-stroke-width-value="2"
+      data-multi-time-series-chart-use-labels-value="true"
+      data-multi-time-series-chart-use-tooltip-value="true"
+      data-multi-time-series-chart-use-legend-value="true"
+      style="height: 400px;"
+      class="w-full"
+    >
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Custom styles for the chart tooltips and legend */
+  .chart-tooltip {
+    font-family: system-ui, -apple-system, sans-serif;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Grid lines styling */
+  .grid-line {
+    stroke-opacity: 0.3;
+  }
+
+  /* Hover effects for legend items */
+  .legend-item {
+    cursor: pointer;
+  }
+
+  .legend-item:hover text {
+    font-weight: 600;
+  }
+</style>
