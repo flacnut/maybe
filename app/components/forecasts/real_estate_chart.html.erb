@@ -74,6 +74,58 @@
         <p class="text-xs text-secondary">Deposit Amount</p>
       </div>
     </div>
+    
+    <!-- Toggle Controls -->
+    <div class="mt-6 pt-4 border-t border-secondary">
+      <div class="flex flex-wrap gap-6">
+        <div class="flex items-center gap-2">
+          <input 
+            type="checkbox" 
+            id="reinvest_cashflows"
+            <%= reinvest_cashflows ? 'checked' : '' %>
+            data-forecasts--real-estate-chart-target="reinvestCashflows"
+            data-action="change->forecasts--real-estate-chart#updateChart"
+            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          />
+          <label for="reinvest_cashflows" class="text-sm text-primary">
+            Re-invest cashflows back into mortgage
+          </label>
+        </div>
+        
+        <div class="flex items-center gap-2">
+          <input 
+            type="checkbox" 
+            id="adjust_for_inflation"
+            <%= adjust_for_inflation ? 'checked' : '' %>
+            data-forecasts--real-estate-chart-target="adjustForInflation"
+            data-action="change->forecasts--real-estate-chart#toggleInflationInput change->forecasts--real-estate-chart#updateChart"
+            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          />
+          <label for="adjust_for_inflation" class="text-sm text-primary">
+            Adjust all numbers for inflation
+          </label>
+        </div>
+        
+        <!-- Inflation Rate Input (conditional) -->
+        <div class="flex items-center gap-2" data-forecasts--real-estate-chart-target="inflationRateContainer" style="<%= adjust_for_inflation ? '' : 'display: none;' %>">
+          <label for="inflation_rate" class="text-sm text-primary whitespace-nowrap">
+            Inflation Rate (%):
+          </label>
+          <input 
+            type="number"
+            id="inflation_rate"
+            value="<%= inflation_rate %>"
+            step="0.1"
+            min="0"
+            max="10"
+            data-forecasts--real-estate-chart-target="inflationRate"
+            data-action="input->forecasts--real-estate-chart#updateChart"
+            class="w-20 text-sm border border-secondary rounded px-2 py-1"
+            placeholder="3.0"
+          />
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Input Sections -->
@@ -332,7 +384,7 @@
   <!-- Projection Table -->
   <div class="bg-container border border-secondary rounded-xl p-6">
     <div class="mb-4">
-      <h3 class="text-lg font-medium text-primary mb-1">15-Year Financial Projection</h3>
+      <h3 class="text-lg font-medium text-primary mb-1">Financial Projection</h3>
       <p class="text-sm text-secondary">Detailed yearly breakdown of investment performance</p>
     </div>
     

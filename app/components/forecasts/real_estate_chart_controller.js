@@ -5,7 +5,8 @@ export default class extends Controller {
     "purchasePrice", "depreciableValue", "exitCapRate", "holdPeriod", "capRate", "noi", "rentBumpRate", "dscrBuffer",
     "depositPercentage", "interestRate", "loanTerm", "amortizationSchedule",
     "chartContainer", "projectionTableBody", "irrValue", 
-    "monthlyIncomeDisplay", "monthlyPaymentDisplay", "dscrValue", "loanAmountDisplay", "depositAmountDisplay"
+    "monthlyIncomeDisplay", "monthlyPaymentDisplay", "dscrValue", "loanAmountDisplay", "depositAmountDisplay",
+    "reinvestCashflows", "adjustForInflation", "inflationRate", "inflationRateContainer"
   ]
 
   connect() {
@@ -125,6 +126,14 @@ export default class extends Controller {
     
     this.updateMetricsDisplay();
     this.updateChart();
+  }
+
+  // Toggle inflation rate input visibility
+  toggleInflationInput() {
+    if (this.hasInflationRateContainerTarget && this.hasAdjustForInflationTarget) {
+      const isChecked = this.adjustForInflationTarget.checked;
+      this.inflationRateContainerTarget.style.display = isChecked ? '' : 'none';
+    }
   }
 
   // Update income calculations (NOI and monthly income based on cap rate)
@@ -265,7 +274,10 @@ export default class extends Controller {
       loanTerm: loanTerm,
       amortizationSchedule: amortizationSchedule,
       loanAmount: loanAmount,
-      repaymentAmount: repaymentAmount
+      repaymentAmount: repaymentAmount,
+      reinvestCashflows: this.hasReinvestCashflowsTarget ? this.reinvestCashflowsTarget.checked : false,
+      adjustForInflation: this.hasAdjustForInflationTarget ? this.adjustForInflationTarget.checked : false,
+      inflationRate: parseFloat(this.inflationRateTarget.value) || 3.0
     };
 
     // Generate new forecast data
@@ -296,7 +308,7 @@ export default class extends Controller {
     
     // Calculate initial values
     let currentNOI = inputs.noi;
-    let remainingLoan = inputs.loanAmount;
+    let currentLoanBalance = inputs.loanAmount;
     
     for (let year = 0; year <= inputs.holdPeriod; year++) {
       const date = new Date(currentDate.getFullYear() + year, currentDate.getMonth(), currentDate.getDate());
@@ -308,18 +320,50 @@ export default class extends Controller {
           currentNOI *= (1 + rentGrowthRate);
         }
         
-        // Calculate mortgage remaining using FV formula
-        const monthlyRate = (inputs.interestRate * 0.01) / 12;
-        const monthsElapsed = year * 12;
-        const monthlyPayment = inputs.repaymentAmount;
-        remainingLoan = Math.max(0, this.calculateFV(monthlyRate, monthsElapsed, monthlyPayment, -1 * inputs.loanAmount));
+        // Update loan balance based on reinvestment setting
+        if (inputs.reinvestCashflows) {
+          // Dynamic loan tracking with cashflow reinvestment
+          const scheduledAnnualPayment = (currentLoanBalance > 0 && year <= inputs.loanTerm) ? inputs.repaymentAmount * 12 : 0;
+          const baseCashFlow = currentNOI - scheduledAnnualPayment;
+          
+          // Apply scheduled principal payment
+          if (currentLoanBalance > 0 && year <= inputs.loanTerm) {
+            const annualInterest = currentLoanBalance * (inputs.interestRate / 100.0);
+            const annualPrincipal = scheduledAnnualPayment - annualInterest;
+            currentLoanBalance = Math.max(0, currentLoanBalance - annualPrincipal);
+          }
+          
+          // Apply extra principal payment from positive cashflow
+          if (baseCashFlow > 0 && currentLoanBalance > 0) {
+            const extraPrincipalPayment = Math.min(baseCashFlow, currentLoanBalance);
+            currentLoanBalance = Math.max(0, currentLoanBalance - extraPrincipalPayment);
+          }
+          
+          // Handle balloon payment at loan term
+          if (year === inputs.loanTerm && currentLoanBalance > 0) {
+            currentLoanBalance = 0;
+          }
+          
+        } else {
+          // Standard FV formula calculation
+          const monthlyRate = (inputs.interestRate * 0.01) / 12;
+          const monthsElapsed = year * 12;
+          const monthlyPayment = inputs.repaymentAmount;
+          currentLoanBalance = year > inputs.loanTerm ? 0 : Math.max(0, this.calculateFV(monthlyRate, monthsElapsed, monthlyPayment, -1 * inputs.loanAmount));
+        }
       }
       
       // Calculate property value using cap rate interpolation and current NOI
       const currentPropertyValue = this.calculatePropertyValue(year, currentNOI, inputs);
       
       // Calculate net equity (93% of property value - remaining loan)
-      const equity = (0.93 * currentPropertyValue) - remainingLoan;
+      let equity = (0.93 * currentPropertyValue) - currentLoanBalance;
+      
+      // Apply inflation adjustment to convert to present dollars
+      if (inputs.adjustForInflation && year > 0) {
+        const adjustmentRatio = Math.pow(1 + (inputs.inflationRate / 100), year);
+        equity = equity / adjustmentRatio;
+      }
       
       dataPoints.push({
         date: date.toISOString().split('T')[0], // Format as YYYY-MM-DD
@@ -370,12 +414,16 @@ export default class extends Controller {
       repaymentAmount: repaymentAmount,
       interestRate: interestRate,
       loanTerm: loanTerm,
-      amortizationSchedule: amortizationSchedule
+      amortizationSchedule: amortizationSchedule,
+      reinvestCashflows: this.hasReinvestCashflowsTarget ? this.reinvestCashflowsTarget.checked : false,
+      adjustForInflation: this.hasAdjustForInflationTarget ? this.adjustForInflationTarget.checked : false,
+      inflationRate: parseFloat(this.inflationRateTarget.value) || 3.0
     };
 
     this.projectionTableBodyTarget.innerHTML = '';
 
     let currentNOI = inputs.noi;
+    let currentLoanBalance = inputs.loanAmount;
     const cashFlows = []; // Track cash flows for IRR calculation
 
     for (let year = 1; year <= inputs.holdPeriod; year++) {
@@ -388,28 +436,69 @@ export default class extends Controller {
       // Calculate property value using cap rate interpolation and current NOI
       const currentAssetValue = this.calculatePropertyValue(year, currentNOI, inputs);
       
-      // Calculate mortgage remaining using FV formula
-      // FV(monthly_rate, months_elapsed, monthly_payment, -initial_loan)
-      const monthlyRate = (inputs.interestRate * 0.01) / 12;
-      const monthsElapsed = Math.min(year * 12, inputs.loanTerm * 12); // Cap at loan term
-      const monthlyPayment = inputs.repaymentAmount;
-      const remainingLoan = year > inputs.loanTerm ? 0 : Math.max(0, this.calculateFV(monthlyRate, monthsElapsed, monthlyPayment, -1 * inputs.loanAmount));
+      // Handle loan calculations based on whether reinvestment is enabled
+      let remainingLoan, annualRepayment, cashFlow, extraPrincipalPayment = 0;
       
-      const annualRepayment = year <= inputs.loanTerm ? inputs.repaymentAmount * 12 : 0;
+      if (inputs.reinvestCashflows) {
+        // Cashflow reinvestment logic: apply positive cashflow to loan principal
+        
+        // Calculate base cashflow (NOI - scheduled payments)
+        const scheduledAnnualPayment = (currentLoanBalance > 0 && year <= inputs.loanTerm) ? inputs.repaymentAmount * 12 : 0;
+        let baseCashFlow = currentNOI - scheduledAnnualPayment;
+        
+        // Apply scheduled principal and interest payments
+        if (currentLoanBalance > 0 && year <= inputs.loanTerm) {
+          const monthlyRate = (inputs.interestRate * 0.01) / 12;
+          const annualInterest = currentLoanBalance * (inputs.interestRate / 100.0);
+          const annualPrincipal = scheduledAnnualPayment - annualInterest;
+          currentLoanBalance = Math.max(0, currentLoanBalance - annualPrincipal);
+        }
+        
+        // Apply extra principal payment from positive cashflow
+        if (baseCashFlow > 0 && currentLoanBalance > 0) {
+          extraPrincipalPayment = Math.min(baseCashFlow, currentLoanBalance);
+          currentLoanBalance = Math.max(0, currentLoanBalance - extraPrincipalPayment);
+          cashFlow = 0; // All positive cashflow goes to loan paydown
+        } else {
+          cashFlow = baseCashFlow; // Negative cashflow remains as cash requirement
+        }
+        
+        // Handle balloon payment at loan term (if any balance remains)
+        if (year === inputs.loanTerm && currentLoanBalance > 0) {
+          cashFlow -= currentLoanBalance; // Balloon payment
+          currentLoanBalance = 0;
+        }
+        
+        remainingLoan = currentLoanBalance;
+        annualRepayment = scheduledAnnualPayment + extraPrincipalPayment;
+        
+      } else {
+        // Standard logic without reinvestment
+        const monthlyRate = (inputs.interestRate * 0.01) / 12;
+        const monthsElapsed = Math.min(year * 12, inputs.loanTerm * 12); // Cap at loan term
+        const monthlyPayment = inputs.repaymentAmount;
+        remainingLoan = year > inputs.loanTerm ? 0 : Math.max(0, this.calculateFV(monthlyRate, monthsElapsed, monthlyPayment, -1 * inputs.loanAmount));
+        
+        annualRepayment = year <= inputs.loanTerm ? inputs.repaymentAmount * 12 : 0;
+        
+        // Calculate standard cash flow
+        cashFlow = currentNOI - annualRepayment;
+        
+        // Handle balloon payment at loan term
+        if (year === inputs.loanTerm && remainingLoan > 0) {
+          cashFlow -= remainingLoan;
+        }
+      }
       
-      // Calculate cash flow - subtract deposit in year 1, balloon payment at loan term, sale proceeds in year 15
-      let cashFlow = currentNOI - annualRepayment;
+      // Handle initial deposit
       if (year === 1) {
         const depositAmount = inputs.purchasePrice - inputs.loanAmount;
         cashFlow -= depositAmount;
-      } else if (year === inputs.loanTerm) {
-        // Balloon payment at loan term
-        cashFlow -= remainingLoan;
-      } 
+      }
       
+      // Handle sale proceeds at end of hold period
       if (year === inputs.holdPeriod) {
-        // Add sale proceeds at end of hold period: 93% of asset value minus remaining mortgage (or 0 if loan already paid off)
-        const finalLoanBalance = year > inputs.loanTerm ? 0 : remainingLoan;
+        const finalLoanBalance = remainingLoan;
         const saleProceeds = (0.93 * currentAssetValue) - finalLoanBalance;
         cashFlow += saleProceeds;
       }
@@ -418,11 +507,20 @@ export default class extends Controller {
       const netEquity = currentAssetValue - remainingLoan;
       
       // Calculate Profit (NOI - Interest Payment for this year)
-      const totalPayments = inputs.amortizationSchedule * 12; // Use amortization schedule for interest calculation
-      const startPeriod = (year - 1) * 12 + 1; // First month of this year
-      const endPeriod = year * 12; // Last month of this year
-      const interestPayment = (inputs.loanAmount > 0 && year <= inputs.loanTerm) ? 
-        this.calculateIPMTRange(monthlyRate, totalPayments, inputs.loanAmount, startPeriod, endPeriod) : 0;
+      let interestPayment = 0;
+      if (inputs.reinvestCashflows) {
+        // For reinvestment scenario, use actual loan balance at start of year
+        const startingBalance = year === 1 ? inputs.loanAmount : 
+          (year > inputs.loanTerm ? 0 : Math.max(0, remainingLoan + (annualRepayment - currentNOI + (year === 1 ? inputs.purchasePrice - inputs.loanAmount : 0))));
+        interestPayment = startingBalance * (inputs.interestRate / 100.0);
+      } else {
+        // Standard calculation
+        const totalPayments = inputs.amortizationSchedule * 12;
+        const startPeriod = (year - 1) * 12 + 1;
+        const endPeriod = year * 12;
+        interestPayment = (inputs.loanAmount > 0 && year <= inputs.loanTerm) ? 
+          this.calculateIPMTRange((inputs.interestRate * 0.01) / 12, totalPayments, inputs.loanAmount, startPeriod, endPeriod) : 0;
+      }
       const profit = currentNOI - interestPayment;
       
       // Calculate After-Tax Cash Flow using new formula
@@ -434,19 +532,41 @@ export default class extends Controller {
       // Store cash flow for IRR calculation
       cashFlows.push(cashFlow);
 
+      // Apply inflation adjustment to convert to present dollars
+      let displayAssetValue = currentAssetValue;
+      let displayRemainingLoan = remainingLoan;
+      let displayNetEquity = netEquity;
+      let displayNOI = currentNOI;
+      let displayInterestPayment = interestPayment;
+      let displayProfit = profit;
+      let displayCashFlow = cashFlow;
+      let displayAfterTaxCashFlow = afterTaxCashFlow;
+
+      if (inputs.adjustForInflation && year > 1) {
+        const adjustmentRatio = Math.pow(1 + (inputs.inflationRate / 100), year - 1);
+        displayAssetValue = currentAssetValue / adjustmentRatio;
+        displayRemainingLoan = remainingLoan / adjustmentRatio;
+        displayNetEquity = netEquity / adjustmentRatio;
+        displayNOI = currentNOI / adjustmentRatio;
+        displayInterestPayment = interestPayment / adjustmentRatio;
+        displayProfit = profit / adjustmentRatio;
+        displayCashFlow = cashFlow / adjustmentRatio;
+        displayAfterTaxCashFlow = afterTaxCashFlow / adjustmentRatio;
+      }
+
       const row = document.createElement('tr');
       row.className = 'border-b border-gray-100 hover:bg-gray-50';
       
       row.innerHTML = `
         <td class="py-3 px-2 font-medium text-primary">${year}</td>
-        <td class="py-3 px-2 text-right text-primary">$${Math.round(currentAssetValue).toLocaleString()}</td>
-        <td class="py-3 px-2 text-right text-primary">$${Math.round(remainingLoan).toLocaleString()}</td>
-        <td class="py-3 px-2 text-right text-primary">$${Math.round(netEquity).toLocaleString()}</td>
-        <td class="py-3 px-2 text-right text-primary">$${Math.round(currentNOI).toLocaleString()}</td>
-        <td class="py-3 px-2 text-right text-orange-600">$${Math.round(interestPayment).toLocaleString()}</td>
-        <td class="py-3 px-2 text-right ${profit >= 0 ? 'text-green-600' : 'text-red-600'}">$${Math.round(profit).toLocaleString()}</td>
-        <td class="py-3 px-2 text-right ${cashFlow >= 0 ? 'text-green-600' : 'text-red-600'}">$${Math.round(cashFlow).toLocaleString()}</td>
-        <td class="py-3 px-2 text-right ${afterTaxCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}">$${Math.round(afterTaxCashFlow).toLocaleString()}</td>
+        <td class="py-3 px-2 text-right text-primary">$${Math.round(displayAssetValue).toLocaleString()}</td>
+        <td class="py-3 px-2 text-right text-primary">$${Math.round(displayRemainingLoan).toLocaleString()}</td>
+        <td class="py-3 px-2 text-right text-primary">$${Math.round(displayNetEquity).toLocaleString()}</td>
+        <td class="py-3 px-2 text-right text-primary">$${Math.round(displayNOI).toLocaleString()}</td>
+        <td class="py-3 px-2 text-right text-orange-600">$${Math.round(displayInterestPayment).toLocaleString()}</td>
+        <td class="py-3 px-2 text-right ${displayProfit >= 0 ? 'text-green-600' : 'text-red-600'}">$${Math.round(displayProfit).toLocaleString()}</td>
+        <td class="py-3 px-2 text-right ${displayCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}">$${Math.round(displayCashFlow).toLocaleString()}</td>
+        <td class="py-3 px-2 text-right ${displayAfterTaxCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}">$${Math.round(displayAfterTaxCashFlow).toLocaleString()}</td>
       `;
       
       this.projectionTableBodyTarget.appendChild(row);

@@ -1,5 +1,5 @@
 class Forecasts::RealEstateChart < ApplicationComponent
-  attr_reader :purchase_price, :depreciable_value, :exit_cap_rate, :hold_period, :cap_rate, :noi, :rent_bump_rate, :dscr_buffer, :deposit_percentage, :interest_rate, :loan_term, :amortization_schedule, :loan_amount, :repayment_amount
+  attr_reader :purchase_price, :depreciable_value, :exit_cap_rate, :hold_period, :cap_rate, :noi, :rent_bump_rate, :dscr_buffer, :deposit_percentage, :interest_rate, :loan_term, :amortization_schedule, :loan_amount, :repayment_amount, :reinvest_cashflows, :adjust_for_inflation, :inflation_rate
 
   def initialize(
     purchase_price: 500000,
@@ -15,7 +15,10 @@ class Forecasts::RealEstateChart < ApplicationComponent
     loan_term: 15,
     amortization_schedule: 25,
     loan_amount: 400000,
-    repayment_amount: 2000
+    repayment_amount: 2000,
+    reinvest_cashflows: false,
+    adjust_for_inflation: false,
+    inflation_rate: 3.0
   )
     @purchase_price = purchase_price.to_f
     @depreciable_value = depreciable_value.to_f
@@ -31,6 +34,9 @@ class Forecasts::RealEstateChart < ApplicationComponent
     @amortization_schedule = amortization_schedule.to_f
     @loan_amount = loan_amount.to_f
     @repayment_amount = repayment_amount.to_f
+    @reinvest_cashflows = reinvest_cashflows
+    @adjust_for_inflation = adjust_for_inflation
+    @inflation_rate = inflation_rate.to_f
   end
 
   private
