@@ -2,10 +2,10 @@ import { Controller } from "@hotwired/stimulus";
 
 export default class extends Controller {
   static targets = [
-    "purchasePrice", "depreciableValue", "growthRate", "capRate", "noi", "rentBumpRate",
-    "depositPercentage", "interestRate", "loanAmount",
+    "purchasePrice", "depreciableValue", "exitCapRate", "holdPeriod", "capRate", "noi", "rentBumpRate", "dscrBuffer",
+    "depositPercentage", "interestRate", "loanTerm", "amortizationSchedule",
     "chartContainer", "projectionTableBody", "irrValue", 
-    "monthlyIncomeDisplay", "monthlyPaymentDisplay", "dscrValue"
+    "monthlyIncomeDisplay", "monthlyPaymentDisplay", "dscrValue", "loanAmountDisplay", "depositAmountDisplay"
   ]
 
   connect() {
@@ -15,6 +15,24 @@ export default class extends Controller {
     this.updateChart();
   }
 
+  // Helper method to calculate loan amount from purchase price and deposit percentage
+  calculateLoanAmount() {
+    const purchasePrice = parseFloat(this.purchasePriceTarget.value) || 500000;
+    const depositPercentage = parseFloat(this.depositPercentageTarget.value) || 20.0;
+    return purchasePrice * (1 - depositPercentage / 100.0);
+  }
+
+  // Helper method to calculate property value using linear interpolation between cap rates
+  calculatePropertyValue(year, currentNOI, inputs) {
+    // Linear interpolation of cap rate from current cap rate to exit cap rate
+    const startCapRate = inputs.capRate / 100.0;
+    const endCapRate = inputs.exitCapRate / 100.0;
+    const interpolatedCapRate = startCapRate + (endCapRate - startCapRate) * (year / inputs.holdPeriod);
+    
+    // Property value = NOI / Cap Rate
+    return currentNOI / interpolatedCapRate;
+  }
+
   // Update the metrics display box (monthly income, monthly payment, DSCR)
   updateMetricsDisplay() {
     // Get current values directly from inputs or calculate them
@@ -22,12 +40,13 @@ export default class extends Controller {
     const monthlyIncome = noi / 12;
     
     // Calculate monthly payment using the same logic as updateLoanCalculations
-    const loanAmount = parseFloat(this.loanAmountTarget.value) || 0;
+    const loanAmount = this.calculateLoanAmount();
     const interestRate = parseFloat(this.interestRateTarget.value) || 0;
+    const amortizationSchedule = parseFloat(this.amortizationScheduleTarget.value) || 25;
     let monthlyPayment = 0;
     
     if (loanAmount > 0 && interestRate >= 0) {
-      monthlyPayment = this.calculatePMT(interestRate / 100.0, 30 * 12, loanAmount);
+      monthlyPayment = this.calculatePMT(interestRate / 100.0, amortizationSchedule * 12, loanAmount);
     }
     
     // Update monthly income display
@@ -40,9 +59,11 @@ export default class extends Controller {
       this.monthlyPaymentDisplayTarget.textContent = `$${Math.round(monthlyPayment).toLocaleString()}`;
     }
     
-    // Calculate and update DSCR (Debt Service Coverage Ratio)
+    // Calculate and update DSCR (Debt Service Coverage Ratio) with buffer
     if (this.hasDscrValueTarget) {
-      const dscr = monthlyPayment > 0 ? (monthlyIncome / monthlyPayment) : 0;
+      const dscrBuffer = parseFloat(this.dscrBufferTarget.value) || 0;
+      const adjustedMonthlyIncome = monthlyIncome * (1.0 - dscrBuffer / 100.0);
+      const dscr = monthlyPayment > 0 ? (adjustedMonthlyIncome / monthlyPayment) : 0;
       this.dscrValueTarget.textContent = dscr > 0 ? dscr.toFixed(2) : "N/A";
       
       // Color code DSCR (green if >= 1.25, yellow if >= 1.0, red if < 1.0)
@@ -57,17 +78,22 @@ export default class extends Controller {
         this.dscrValueTarget.classList.add('text-blue-600'); // Default color for N/A
       }
     }
+    
+    // Update loan amount display
+    if (this.hasLoanAmountDisplayTarget) {
+      this.loanAmountDisplayTarget.textContent = `$${Math.round(loanAmount).toLocaleString()}`;
+    }
+    
+    // Update deposit amount display
+    if (this.hasDepositAmountDisplayTarget) {
+      const purchasePrice = parseFloat(this.purchasePriceTarget.value) || 500000;
+      const depositAmount = purchasePrice - loanAmount;
+      this.depositAmountDisplayTarget.textContent = `$${Math.round(depositAmount).toLocaleString()}`;
+    }
   }
 
-  // Handle purchase price changes - update loan amount and income, keep deposit percentage and cap rate
+  // Handle purchase price changes - update income, keep deposit percentage and cap rate
   onPurchasePriceChange() {
-    const purchasePrice = Math.max(0, parseFloat(this.purchasePriceTarget.value) || 500000);
-    const depositPercentage = Math.max(0, Math.min(100, parseFloat(this.depositPercentageTarget.value) || 20.0));
-    
-    // Update mortgage calculations
-    const depositAmount = purchasePrice * (depositPercentage / 100.0);
-    const newLoanAmount = Math.max(0, purchasePrice - depositAmount);
-    this.loanAmountTarget.value = Math.round(newLoanAmount);
     
     // Update income calculations (keep cap rate, adjust NOI)
     this.updateIncomeCalculations();
@@ -75,34 +101,8 @@ export default class extends Controller {
     this.updateChart();
   }
 
-  // Handle deposit percentage changes - update loan amount, keep purchase price
+  // Handle deposit percentage changes, keep purchase price
   onDepositPercentageChange() {
-    const purchasePrice = parseFloat(this.purchasePriceTarget.value) || 500000;
-    const depositPercentage = Math.max(0, Math.min(100, parseFloat(this.depositPercentageTarget.value) || 20.0));
-    
-    const depositAmount = purchasePrice * (depositPercentage / 100.0);
-    const newLoanAmount = Math.max(0, purchasePrice - depositAmount);
-    
-    this.loanAmountTarget.value = Math.round(newLoanAmount);
-    this.updateLoanCalculations();
-    this.updateChart();
-  }
-
-  // Handle loan amount changes - update deposit percentage, keep purchase price
-  onLoanAmountChange() {
-    const purchasePrice = parseFloat(this.purchasePriceTarget.value) || 500000;
-    const loanAmount = Math.max(0, parseFloat(this.loanAmountTarget.value) || 400000);
-    
-    // Prevent loan amount from exceeding purchase price
-    if (loanAmount > purchasePrice) {
-      this.loanAmountTarget.value = purchasePrice;
-      this.depositPercentageTarget.value = "0";
-    } else {
-      const depositAmount = purchasePrice - loanAmount;
-      const newDepositPercentage = (depositAmount / purchasePrice) * 100.0;
-      this.depositPercentageTarget.value = Math.max(0, Math.min(100, newDepositPercentage.toFixed(1)));
-    }
-    
     this.updateLoanCalculations();
     this.updateChart();
   }
@@ -246,19 +246,24 @@ export default class extends Controller {
     this.updateMetricsDisplay();
     
     // Get all input values with defaults
-    const loanAmount = parseFloat(this.loanAmountTarget.value) || 400000;
+    const loanAmount = this.calculateLoanAmount();
     const interestRate = parseFloat(this.interestRateTarget.value) || 6.5;
-    const repaymentAmount = loanAmount > 0 ? this.calculatePMT(interestRate / 100.0, 30 * 12, loanAmount) : 0;
+    const loanTerm = parseFloat(this.loanTermTarget.value) || 15;
+    const amortizationSchedule = parseFloat(this.amortizationScheduleTarget.value) || 25;
+    const repaymentAmount = loanAmount > 0 ? this.calculatePMT(interestRate / 100.0, amortizationSchedule * 12, loanAmount) : 0;
     
     const inputs = {
       purchasePrice: parseFloat(this.purchasePriceTarget.value) || 500000,
       depreciableValue: parseFloat(this.depreciableValueTarget.value) || 400000,
-      growthRate: parseFloat(this.growthRateTarget.value) || 3.0,
+      exitCapRate: parseFloat(this.exitCapRateTarget.value) || 6.0,
+      holdPeriod: parseFloat(this.holdPeriodTarget.value) || 15,
       capRate: parseFloat(this.capRateTarget.value) || 5.0,
       noi: parseFloat(this.noiTarget.value) || 25000,
       rentBumpRate: parseFloat(this.rentBumpRateTarget.value) || 2.5,
       depositPercentage: parseFloat(this.depositPercentageTarget.value) || 20.0,
       interestRate: interestRate,
+      loanTerm: loanTerm,
+      amortizationSchedule: amortizationSchedule,
       loanAmount: loanAmount,
       repaymentAmount: repaymentAmount
     };
@@ -285,21 +290,23 @@ export default class extends Controller {
   }
 
   generateForecastSeries(inputs) {
-    // Generate 15 years of net equity projection (single series for chart compatibility)
+    // Generate net equity projection for the hold period (single series for chart compatibility)
     const dataPoints = [];
     const currentDate = new Date();
     
     // Calculate initial values
-    let currentPropertyValue = inputs.purchasePrice;
+    let currentNOI = inputs.noi;
     let remainingLoan = inputs.loanAmount;
     
-    for (let year = 0; year <= 15; year++) {
+    for (let year = 0; year <= inputs.holdPeriod; year++) {
       const date = new Date(currentDate.getFullYear() + year, currentDate.getMonth(), currentDate.getDate());
       
       if (year > 0) {
-        // Apply property appreciation
-        const appreciationRate = inputs.growthRate / 100.0;
-        currentPropertyValue *= (1 + appreciationRate);
+        // Apply NOI growth for rent increases (starting from year 2)
+        if (year > 1) {
+          const rentGrowthRate = inputs.rentBumpRate / 100.0;
+          currentNOI *= (1 + rentGrowthRate);
+        }
         
         // Calculate mortgage remaining using FV formula
         const monthlyRate = (inputs.interestRate * 0.01) / 12;
@@ -307,6 +314,9 @@ export default class extends Controller {
         const monthlyPayment = inputs.repaymentAmount;
         remainingLoan = Math.max(0, this.calculateFV(monthlyRate, monthsElapsed, monthlyPayment, -1 * inputs.loanAmount));
       }
+      
+      // Calculate property value using cap rate interpolation and current NOI
+      const currentPropertyValue = this.calculatePropertyValue(year, currentNOI, inputs);
       
       // Calculate net equity (93% of property value - remaining loan)
       const equity = (0.93 * currentPropertyValue) - remainingLoan;
@@ -342,51 +352,65 @@ export default class extends Controller {
       return;
     }
 
-    const loanAmount = parseFloat(this.loanAmountTarget.value) || 400000;
+    const loanAmount = this.calculateLoanAmount();
     const interestRate = parseFloat(this.interestRateTarget.value) || 6.5;
-    const repaymentAmount = loanAmount > 0 ? this.calculatePMT(interestRate / 100.0, 30 * 12, loanAmount) : 0;
+    const loanTerm = parseFloat(this.loanTermTarget.value) || 15;
+    const amortizationSchedule = parseFloat(this.amortizationScheduleTarget.value) || 25;
+    const repaymentAmount = loanAmount > 0 ? this.calculatePMT(interestRate / 100.0, amortizationSchedule * 12, loanAmount) : 0;
     
     const inputs = {
       purchasePrice: parseFloat(this.purchasePriceTarget.value) || 500000,
       depreciableValue: parseFloat(this.depreciableValueTarget.value) || 400000,
-      growthRate: parseFloat(this.growthRateTarget.value) || 3.0,
+      exitCapRate: parseFloat(this.exitCapRateTarget.value) || 6.0,
+      holdPeriod: parseFloat(this.holdPeriodTarget.value) || 15,
+      capRate: parseFloat(this.capRateTarget.value) || 5.0,
       noi: parseFloat(this.noiTarget.value) || 25000,
       rentBumpRate: parseFloat(this.rentBumpRateTarget.value) || 2.5,
       loanAmount: loanAmount,
       repaymentAmount: repaymentAmount,
-      interestRate: interestRate
+      interestRate: interestRate,
+      loanTerm: loanTerm,
+      amortizationSchedule: amortizationSchedule
     };
 
     this.projectionTableBodyTarget.innerHTML = '';
 
-    let currentAssetValue = inputs.purchasePrice;
     let currentNOI = inputs.noi;
     const cashFlows = []; // Track cash flows for IRR calculation
 
-    for (let year = 1; year <= 15; year++) {
-      const appreciationRate = inputs.growthRate / 100.0;
-      currentAssetValue *= (1 + appreciationRate);
-      
+    for (let year = 1; year <= inputs.holdPeriod; year++) {
+      // Apply rent increases at the END of each year (starting from year 2)
       const rentGrowthRate = inputs.rentBumpRate / 100.0;
-      currentNOI *= (1 + rentGrowthRate);
+      if (year > 1) {
+        currentNOI *= (1 + rentGrowthRate);
+      }
+      
+      // Calculate property value using cap rate interpolation and current NOI
+      const currentAssetValue = this.calculatePropertyValue(year, currentNOI, inputs);
       
       // Calculate mortgage remaining using FV formula
       // FV(monthly_rate, months_elapsed, monthly_payment, -initial_loan)
       const monthlyRate = (inputs.interestRate * 0.01) / 12;
-      const monthsElapsed = year * 12;
+      const monthsElapsed = Math.min(year * 12, inputs.loanTerm * 12); // Cap at loan term
       const monthlyPayment = inputs.repaymentAmount;
-      const remainingLoan = Math.max(0, this.calculateFV(monthlyRate, monthsElapsed, monthlyPayment, -1 * inputs.loanAmount));
+      const remainingLoan = year > inputs.loanTerm ? 0 : Math.max(0, this.calculateFV(monthlyRate, monthsElapsed, monthlyPayment, -1 * inputs.loanAmount));
       
-      const annualRepayment = inputs.repaymentAmount * 12;
+      const annualRepayment = year <= inputs.loanTerm ? inputs.repaymentAmount * 12 : 0;
       
-      // Calculate cash flow - subtract deposit in year 1, add sale proceeds in year 15
+      // Calculate cash flow - subtract deposit in year 1, balloon payment at loan term, sale proceeds in year 15
       let cashFlow = currentNOI - annualRepayment;
       if (year === 1) {
         const depositAmount = inputs.purchasePrice - inputs.loanAmount;
         cashFlow -= depositAmount;
-      } else if (year === 15) {
-        // Add sale proceeds: 93% of asset value minus remaining mortgage
-        const saleProceeds = (0.93 * currentAssetValue) - remainingLoan;
+      } else if (year === inputs.loanTerm) {
+        // Balloon payment at loan term
+        cashFlow -= remainingLoan;
+      } 
+      
+      if (year === inputs.holdPeriod) {
+        // Add sale proceeds at end of hold period: 93% of asset value minus remaining mortgage (or 0 if loan already paid off)
+        const finalLoanBalance = year > inputs.loanTerm ? 0 : remainingLoan;
+        const saleProceeds = (0.93 * currentAssetValue) - finalLoanBalance;
         cashFlow += saleProceeds;
       }
 
@@ -394,10 +418,10 @@ export default class extends Controller {
       const netEquity = currentAssetValue - remainingLoan;
       
       // Calculate Profit (NOI - Interest Payment for this year)
-      const totalPayments = 30 * 12; // 30 year loan
+      const totalPayments = inputs.amortizationSchedule * 12; // Use amortization schedule for interest calculation
       const startPeriod = (year - 1) * 12 + 1; // First month of this year
       const endPeriod = year * 12; // Last month of this year
-      const interestPayment = inputs.loanAmount > 0 ? 
+      const interestPayment = (inputs.loanAmount > 0 && year <= inputs.loanTerm) ? 
         this.calculateIPMTRange(monthlyRate, totalPayments, inputs.loanAmount, startPeriod, endPeriod) : 0;
       const profit = currentNOI - interestPayment;
       
